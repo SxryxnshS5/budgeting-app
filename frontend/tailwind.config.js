@@ -19,21 +19,32 @@ export default {
       },
       keyframes: {
         "fade-up": {
-          "0%": { opacity: "0", transform: "translateY(12px)" },
+          "0%":   { opacity: "0", transform: "translateY(14px)" },
           "100%": { opacity: "1", transform: "translateY(0)" },
         },
         "fade-in": {
-          "0%": { opacity: "0" },
+          "0%":   { opacity: "0" },
           "100%": { opacity: "1" },
         },
-        "grow-x": {
-          "0%": { transform: "scaleX(0)" },
-          "100%": { transform: "scaleX(1)" },
+        "scale-in": {
+          "0%":   { opacity: "0", transform: "scale(0.96)" },
+          "100%": { opacity: "1", transform: "scale(1)" },
+        },
+        "slide-right": {
+          "0%":   { opacity: "0", transform: "translateX(-10px)" },
+          "100%": { opacity: "1", transform: "translateX(0)" },
+        },
+        "pulse-soft": {
+          "0%, 100%": { opacity: "1" },
+          "50%":       { opacity: "0.5" },
         },
       },
       animation: {
-        "fade-up": "fade-up 0.5s cubic-bezier(0.22, 1, 0.36, 1) both",
-        "fade-in": "fade-in 0.4s ease both",
+        "fade-up":    "fade-up 0.5s cubic-bezier(0.22, 1, 0.36, 1) both",
+        "fade-in":    "fade-in 0.4s ease both",
+        "scale-in":   "scale-in 0.4s cubic-bezier(0.22, 1, 0.36, 1) both",
+        "slide-right": "slide-right 0.4s cubic-bezier(0.22, 1, 0.36, 1) both",
+        "pulse-soft": "pulse-soft 1.8s ease-in-out infinite",
       },
     },
   },

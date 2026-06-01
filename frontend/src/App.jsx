@@ -58,7 +58,7 @@ function NavBar() {
 function AnimatedRoutes() {
   const location = useLocation();
   return (
-    <main key={location.pathname} className="mx-auto max-w-5xl px-5 py-10 animate-fade-up">
+    <main key={location.pathname} className="mx-auto max-w-5xl px-5 py-12 animate-fade-up">
       <Routes location={location}>
         <Route path="/" element={<UploadPage />} />
         <Route path="/receipts" element={<ReceiptsPage />} />

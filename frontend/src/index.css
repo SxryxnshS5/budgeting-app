@@ -1,4 +1,4 @@
-@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&display=swap");
 
 @tailwind base;
 @tailwind components;
@@ -12,25 +12,22 @@
 
   body {
     @apply bg-cream text-ink font-sans;
-    background-image: radial-gradient(
-        1200px 600px at 100% -10%,
-        rgba(154, 140, 152, 0.18),
-        transparent 60%
-      ),
-      radial-gradient(
-        900px 500px at -10% 110%,
-        rgba(201, 173, 167, 0.22),
-        transparent 55%
-      );
+    background-image:
+      radial-gradient(ellipse 1100px 600px at 95% -5%,  rgba(154,140,152,0.22), transparent 60%),
+      radial-gradient(ellipse 800px 500px  at 5%  105%, rgba(201,173,167,0.26), transparent 55%),
+      radial-gradient(ellipse 600px 400px  at 50% 50%,  rgba(242,233,228,0.5),  transparent 70%);
     background-attachment: fixed;
   }
+
+  ::-webkit-scrollbar       { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { @apply rounded-full bg-mauve/40; }
+  ::-webkit-scrollbar-thumb:hover { @apply bg-mauve/70; }
 }
 
 @layer utilities {
-  /* Animate children with a staggered fade-up. */
-  .stagger > * {
-    animation: fade-up 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
-  }
+  /* Staggered fade-up for child elements */
+  .stagger > * { animation: fade-up 0.55s cubic-bezier(0.22,1,0.36,1) both; }
   .stagger > *:nth-child(1) { animation-delay: 0.04s; }
   .stagger > *:nth-child(2) { animation-delay: 0.10s; }
   .stagger > *:nth-child(3) { animation-delay: 0.16s; }
@@ -39,4 +36,24 @@
   .stagger > *:nth-child(6) { animation-delay: 0.34s; }
   .stagger > *:nth-child(7) { animation-delay: 0.40s; }
   .stagger > *:nth-child(8) { animation-delay: 0.46s; }
+
+  /* Skeleton shimmer */
+  .skeleton {
+    @apply rounded-xl bg-gradient-to-r from-rose/30 via-cream to-rose/30 bg-[length:200%_100%];
+    animation: shimmer 1.6s infinite linear;
+  }
+
+  /* Glass card */
+  .glass {
+    @apply rounded-2xl border border-white/60 bg-white/65 shadow-soft backdrop-blur-sm;
+  }
+
+  .glass-dark {
+    @apply rounded-2xl border border-ink/10 bg-ink text-cream shadow-soft;
+  }
+}
+
+@keyframes shimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
 }
