@@ -7,9 +7,9 @@ const api = axios.create({
 export const uploadReceipt = (file) => {
   const formData = new FormData();
   formData.append("receipt", file);
-  return api.post("/receipts", formData, {
-    headers: { "Content-Type": "multipart/form-data" },
-  });
+  // Do NOT set Content-Type manually — axios sets it automatically with
+  // the correct multipart boundary when the body is a FormData object.
+  return api.post("/receipts", formData);
 };
 
 export const getReceipts = () => api.get("/receipts");
