@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, NavLink, useLocation } from "react-router
 import UploadPage from "./pages/UploadPage";
 import ReceiptsPage from "./pages/ReceiptsPage";
 import InsightsPage from "./pages/InsightsPage";
+import Logo from "./components/Logo";
 
 const links = [
   { to: "/", label: "Upload", end: true },
@@ -12,8 +13,8 @@ const links = [
 function Brand() {
   return (
     <NavLink to="/" end className="group flex items-center gap-2.5 select-none">
-      <span className="grid h-9 w-9 place-items-center rounded-xl bg-ink text-cream text-lg shadow-soft transition-transform duration-300 group-hover:rotate-6 group-hover:scale-105">
-        🍴
+      <span className="grid h-9 w-9 place-items-center rounded-xl bg-ink text-cream shadow-soft transition-transform duration-300 group-hover:rotate-6 group-hover:scale-105">
+        <Logo className="h-5 w-5" />
       </span>
       <span className="text-lg font-extrabold tracking-tight text-ink">
         Fork <span className="text-mauve">&amp;</span> Finance
