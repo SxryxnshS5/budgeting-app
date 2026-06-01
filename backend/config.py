@@ -12,5 +12,4 @@ ALLOWED_MIME_TYPES: set[str] = {
     "image/jpeg",
     "image/png",
     "image/webp",
-    "application/pdf",
 }
