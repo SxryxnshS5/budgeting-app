@@ -6,8 +6,8 @@ export default defineConfig({
   server: {
     // Proxy API calls to the Python backend during development
     proxy: {
-      "/receipts": "http://localhost:8000",
-      "/insights": "http://localhost:8000",
+      "/receipts": "http://127.0.0.1:8000",
+      "/insights": "http://127.0.0.1:8000",
     },
   },
 });
