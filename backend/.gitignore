@@ -21,6 +21,7 @@ venv/
 
 # Runtime files
 uploads/
+*.db
 
 # OS files
 .DS_Store

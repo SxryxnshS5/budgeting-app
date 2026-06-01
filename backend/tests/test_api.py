@@ -42,6 +42,8 @@ client = TestClient(app)
 # ---------------------------------------------------------------------------
 
 FAKE_RECEIPT = {
+    "is_receipt": True,
+    "is_food_related": True,
     "store_name": "Tesco",
     "date": "2024-06-01",
     "total_amount": 42.50,
@@ -109,6 +111,43 @@ class TestUploadReceipt:
     def test_upload_missing_file_returns_422(self):
         """Posting with no file should return 422 Unprocessable Entity."""
         response = client.post("/receipts")
+        assert response.status_code == 422
+
+    def test_upload_non_food_receipt_is_rejected(self):
+        """A valid receipt that isn't food-related should be rejected and not saved."""
+        non_food = {**FAKE_RECEIPT, "is_food_related": False, "store_name": "H&M"}
+        with patch("routes.receipts.extract_receipt", return_value=(non_food, "{}")):
+            response = client.post(
+                "/receipts",
+                files={"receipt": ("r.jpg", io.BytesIO(fake_image()), "image/jpeg")},
+            )
+
+        assert response.status_code == 422
+        assert "food-related" in response.json()["detail"]
+        # It must not have been persisted.
+        store_names = [r["store_name"] for r in client.get("/receipts").json()]
+        assert "H&M" not in store_names
+
+    def test_upload_non_receipt_is_rejected(self):
+        """An image that isn't a receipt at all should be rejected."""
+        not_receipt = {"is_receipt": False, "is_food_related": False}
+        with patch("routes.receipts.extract_receipt", return_value=(not_receipt, "{}")):
+            response = client.post(
+                "/receipts",
+                files={"receipt": ("r.jpg", io.BytesIO(fake_image()), "image/jpeg")},
+            )
+
+        assert response.status_code == 422
+        assert "receipt" in response.json()["detail"].lower()
+
+    def test_upload_unreadable_image_is_rejected(self):
+        """If the AI can't parse the image, the upload should fail cleanly."""
+        with patch("routes.receipts.extract_receipt", return_value=({}, "")):
+            response = client.post(
+                "/receipts",
+                files={"receipt": ("r.jpg", io.BytesIO(fake_image()), "image/jpeg")},
+            )
+
         assert response.status_code == 422
 
 
