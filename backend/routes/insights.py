@@ -19,13 +19,17 @@ def get_insights():
 
     with get_db() as conn:
         rows = conn.execute(
-            "SELECT store_name, date, total_amount, category, items FROM receipts ORDER BY uploaded_at DESC"
+            "SELECT store_name, date, total_amount, category, cuisine, meal_type, items "
+            "FROM receipts ORDER BY uploaded_at DESC"
         ).fetchall()
 
     if not rows:
         return {
             "insights": "No receipts uploaded yet. Upload some receipts to get spending insights!",
             "receipt_count": 0,
+            "tips": [],
+            "alternatives": [],
+            "recommendations": [],
         }
 
     receipts = []
@@ -40,9 +44,17 @@ def get_insights():
             "date": row["date"],
             "total_amount": row["total_amount"],
             "category": row["category"],
+            "cuisine": row["cuisine"],
+            "meal_type": row["meal_type"],
             "items": items,
         })
 
-    insights_text = generate_insights(receipts)
+    result = generate_insights(receipts)
 
-    return {"insights": insights_text, "receipt_count": len(receipts)}
+    return {
+        "insights": result["narrative"],
+        "receipt_count": len(receipts),
+        "tips": result["tips"],
+        "alternatives": result["alternatives"],
+        "recommendations": result["recommendations"],
+    }

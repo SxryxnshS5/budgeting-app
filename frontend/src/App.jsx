@@ -11,9 +11,9 @@ const links = [
 
 function Brand() {
   return (
-    <NavLink to="/" end className="group flex items-center gap-2.5 select-none">
-      <img src="/logo.png" alt="Fork & Finance" className="h-10 w-10 object-contain transition-transform duration-300 group-hover:rotate-6 group-hover:scale-105" />
-      <span className="text-lg font-extrabold tracking-tight text-ink">
+    <NavLink to="/" end className="group flex shrink-0 items-center gap-2.5 select-none">
+      <img src="/logo.png" alt="Fork & Finance" className="h-10 w-10 shrink-0 object-contain transition-transform duration-300 group-hover:rotate-6 group-hover:scale-105" />
+      <span className="hidden whitespace-nowrap text-lg font-extrabold tracking-tight text-ink sm:inline">
         Fork <span className="text-mauve">&amp;</span> Finance
       </span>
     </NavLink>

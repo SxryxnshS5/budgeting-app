@@ -17,6 +17,25 @@ router = APIRouter(prefix="/receipts", tags=["receipts"])
 _uploads = Path(UPLOADS_DIR)
 _uploads.mkdir(exist_ok=True)
 
+_VALID_MEALS = {"breakfast", "lunch", "dinner", "midnight"}
+
+
+def _meal_from_time(time_str: str | None) -> str | None:
+    """Derive a meal type from an HH:MM time string, or None if unparseable."""
+    if not time_str:
+        return None
+    try:
+        hour = int(time_str.split(":")[0])
+    except (ValueError, AttributeError, IndexError):
+        return None
+    if 5 <= hour < 11:
+        return "breakfast"
+    if 11 <= hour < 16:
+        return "lunch"
+    if 16 <= hour < 22:
+        return "dinner"
+    return "midnight"
+
 
 @router.post("", status_code=201)
 async def upload_receipt(receipt: UploadFile = File(...)):
@@ -72,22 +91,34 @@ async def upload_receipt(receipt: UploadFile = File(...)):
     total_amount = receipt_data.get("total_amount")
     category = receipt_data.get("category")
     items = receipt_data.get("items", [])
+    receipt_time = receipt_data.get("time")
+    cuisine = receipt_data.get("cuisine")
+
+    # Prefer a meal type derived from the printed time; fall back to the AI's guess.
+    meal_type = _meal_from_time(receipt_time)
+    if meal_type is None:
+        ai_meal = (receipt_data.get("meal_type") or "").lower()
+        meal_type = ai_meal if ai_meal in _VALID_MEALS else None
 
     # Persist to DB
     with get_db() as conn:
         cursor = conn.execute(
             """
             INSERT INTO receipts
-                (filename, uploaded_at, store_name, date, total_amount, category, items, raw_json)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                (filename, uploaded_at, store_name, date, time, total_amount,
+                 category, cuisine, meal_type, items, raw_json)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 filename,
                 time.time(),
                 store_name,
                 date,
+                receipt_time,
                 total_amount,
                 category,
+                cuisine,
+                meal_type,
                 json.dumps(items),
                 raw_text,
             ),
@@ -100,8 +131,11 @@ async def upload_receipt(receipt: UploadFile = File(...)):
         "filename": filename,
         "store_name": store_name,
         "date": date,
+        "time": receipt_time,
         "total_amount": total_amount,
         "category": category,
+        "cuisine": cuisine,
+        "meal_type": meal_type,
         "items": items,
     }
 
@@ -112,7 +146,8 @@ def list_receipts():
     with get_db() as conn:
         rows = conn.execute(
             """
-            SELECT id, filename, uploaded_at, store_name, date, total_amount, category, items
+            SELECT id, filename, uploaded_at, store_name, date, time, total_amount,
+                   category, cuisine, meal_type, items
             FROM receipts
             ORDER BY uploaded_at DESC
             """
@@ -131,8 +166,11 @@ def list_receipts():
             "uploaded_at": row["uploaded_at"],
             "store_name": row["store_name"],
             "date": row["date"],
+            "time": row["time"],
             "total_amount": row["total_amount"],
             "category": row["category"],
+            "cuisine": row["cuisine"],
+            "meal_type": row["meal_type"],
             "items": items,
         })
 

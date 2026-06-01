@@ -46,15 +46,25 @@ FAKE_RECEIPT = {
     "is_food_related": True,
     "store_name": "Tesco",
     "date": "2024-06-01",
+    "time": "13:30",
     "total_amount": 42.50,
     "category": "groceries",
+    "cuisine": "Grocery",
+    "meal_type": "lunch",
     "items": [
-        {"name": "Milk", "price": 1.20},
-        {"name": "Bread", "price": 1.50},
+        {"name": "Milk", "price": 1.20, "kind": "drink", "alcoholic": False,
+         "health_labels": [], "taste_tags": []},
+        {"name": "Bread", "price": 1.50, "kind": "food", "alcoholic": False,
+         "health_labels": ["processed"], "taste_tags": ["savory"]},
     ],
 }
 
-FAKE_INSIGHTS = "You spent most on groceries this month. Consider meal planning to save money."
+FAKE_INSIGHTS = {
+    "narrative": "You spent most on groceries this month. Consider meal planning to save money.",
+    "tips": [{"title": "Plan meals", "detail": "Batch cook on Sundays.", "monthly_saving": 40}],
+    "alternatives": [{"instead_of": "Takeaway coffee", "swap_to": "Home brew", "saving": 3.5}],
+    "recommendations": [{"dish": "Caprese salad", "cuisine": "Italian", "reason": "You enjoy savory dishes."}],
+}
 
 
 # ---------------------------------------------------------------------------
@@ -183,13 +193,26 @@ class TestListReceipts:
         receipts = client.get("/receipts").json()
         assert len(receipts) > 0
         keys = receipts[0].keys()
-        for field in ("id", "filename", "uploaded_at", "store_name", "date", "total_amount", "category", "items"):
+        for field in ("id", "filename", "uploaded_at", "store_name", "date", "time",
+                      "total_amount", "category", "cuisine", "meal_type", "items"):
             assert field in keys
+
+    def test_uploaded_receipt_stores_enriched_fields(self):
+        """Cuisine and meal type from the AI should be persisted and returned."""
+        with patch("routes.receipts.extract_receipt", return_value=(FAKE_RECEIPT, "{}")):
+            body = client.post(
+                "/receipts",
+                files={"receipt": ("r.jpg", io.BytesIO(fake_image()), "image/jpeg")},
+            ).json()
+
+        assert body["cuisine"] == "Grocery"
+        # 13:30 falls in the lunch window (11:00-15:59).
+        assert body["meal_type"] == "lunch"
 
 
 class TestInsights:
     def test_insights_returns_200_with_text(self):
-        """GET /insights should return 200 and a non-empty insights string."""
+        """GET /insights should return 200 with a narrative plus structured fields."""
         with patch("routes.insights.generate_insights", return_value=FAKE_INSIGHTS):
             response = client.get("/insights")
 
@@ -197,6 +220,10 @@ class TestInsights:
         body = response.json()
         assert "insights" in body
         assert len(body["insights"]) > 0
+        # New structured fields are surfaced to the frontend.
+        for field in ("tips", "alternatives", "recommendations"):
+            assert isinstance(body[field], list)
+        assert body["tips"][0]["title"] == "Plan meals"
 
     def test_insights_includes_receipt_count(self):
         """Response should include a receipt_count field."""

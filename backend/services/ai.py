@@ -8,8 +8,8 @@ from openai import OpenAI
 from config import OPENAI_API_KEY
 
 _EXTRACTION_SYSTEM = (
-    "You are a receipt parser. Extract structured data from receipt images and return "
-    "valid JSON only — no markdown, no explanation, just the JSON object."
+    "You are a receipt parser and food analyst. Extract structured data from receipt "
+    "images and return valid JSON only — no markdown, no explanation, just the JSON object."
 )
 
 _EXTRACTION_PROMPT = (
@@ -20,15 +20,29 @@ _EXTRACTION_PROMPT = (
     "(clothing, electronics, fuel, utilities, non-receipt images, etc.)\n"
     "- store_name (string): the shop/restaurant/merchant name, or null\n"
     "- date (string): transaction date in YYYY-MM-DD format, or null if not found\n"
-    "- items (array of objects with 'name' string and 'price' number)\n"
+    "- time (string): transaction time in 24-hour HH:MM format if printed on the receipt, "
+    "or null if not found\n"
     "- total_amount (number): the final total charged, or null if not found\n"
-    "- category (string): one of groceries, dining, other\n\n"
+    "- category (string): one of groceries, dining, other\n"
+    "- cuisine (string): the cuisine or food style. One of: Italian, Indian, Chinese, "
+    "American, Mexican, Japanese, Thai, Cafe, Fast Food, Bakery, Grocery, Other\n"
+    "- meal_type (string): best guess of the meal. One of: breakfast, lunch, dinner, midnight\n"
+    "- items (array of objects). Each item object MUST have these keys:\n"
+    "    - name (string)\n"
+    "    - price (number)\n"
+    "    - kind (string): 'food' or 'drink'\n"
+    "    - alcoholic (boolean): true only for alcoholic drinks (beer, wine, cocktails, spirits)\n"
+    "    - health_labels (array of strings): zero or more estimated labels describing the item, "
+    "chosen ONLY from: high-calorie, high-sugar, high-sodium, high-fat, fried, processed, "
+    "healthy, high-protein. Estimate from the item name; use [] if unsure.\n"
+    "    - taste_tags (array of strings): zero or more flavour tags chosen ONLY from: "
+    "sweet, savory, spicy, sour, umami, salty.\n\n"
     "Return ONLY the JSON object, no other text."
 )
 
 _INSIGHTS_SYSTEM = (
-    "You are a personal finance advisor. Analyse spending data and give clear, "
-    "actionable insights in 3-5 sentences."
+    "You are a personal finance advisor and food analyst. You analyse a person's food "
+    "spending and return concise, actionable, friendly guidance as valid JSON only."
 )
 
 
@@ -76,7 +90,7 @@ def extract_receipt(image_base64: str, media_type: str) -> tuple[dict, str]:
                 ],
             },
         ],
-        max_tokens=1024,
+        max_tokens=1500,
     )
 
     raw_text = response.choices[0].message.content or "{}"
@@ -88,31 +102,56 @@ def extract_receipt(image_base64: str, media_type: str) -> tuple[dict, str]:
         return {}, clean
 
 
-def generate_insights(receipts: list[dict]) -> str:
+_INSIGHTS_PROMPT = (
+    "Here is my food spending data from {n} receipts:\n\n{data}\n\n"
+    "Return a JSON object with these exact keys:\n"
+    "- narrative (string): a friendly 2-3 sentence summary of my food spending habits.\n"
+    "- tips (array of 2-3 objects), each with: title (string, short), "
+    "detail (string, one sentence), monthly_saving (number, estimated $/month I could save).\n"
+    "- alternatives (array of 2-3 objects, concrete cheaper swaps), each with: "
+    "instead_of (string), swap_to (string), saving (number, estimated $ saved per occurrence).\n"
+    "- recommendations (array of exactly 3 objects, dishes I'd likely enjoy based on the "
+    "cuisines and taste tags in my data), each with: dish (string), cuisine (string), "
+    "reason (string, one short sentence).\n\n"
+    "Return ONLY the JSON object, no other text."
+)
+
+
+def generate_insights(receipts: list[dict]) -> dict:
     """
-    Ask GPT-4o to summarise spending patterns across all receipts.
+    Ask GPT-4o for structured spending insights across all receipts.
 
     Args:
-        receipts: List of receipt dicts from the database.
+        receipts: List of enriched receipt dicts from the database.
 
     Returns:
-        Plain-text insights string.
+        Dict with keys: narrative (str), tips (list), alternatives (list),
+        recommendations (list). Falls back to safe empty values on parse error.
     """
     response = _client().chat.completions.create(
         model="gpt-4o",
+        response_format={"type": "json_object"},
         messages=[
             {"role": "system", "content": _INSIGHTS_SYSTEM},
             {
                 "role": "user",
-                "content": (
-                    f"Here is my spending data from {len(receipts)} receipts:\n\n"
-                    f"{json.dumps(receipts, indent=2)}\n\n"
-                    "Provide: 1) a brief spending summary, 2) top spending categories, "
-                    "3) one specific saving tip."
+                "content": _INSIGHTS_PROMPT.format(
+                    n=len(receipts), data=json.dumps(receipts, indent=2)
                 ),
             },
         ],
-        max_tokens=1024,
+        max_tokens=1200,
     )
 
-    return response.choices[0].message.content or "Unable to generate insights."
+    raw = response.choices[0].message.content or "{}"
+    try:
+        parsed = json.loads(_strip_fences(raw))
+    except json.JSONDecodeError:
+        parsed = {}
+
+    return {
+        "narrative": parsed.get("narrative") or "Unable to generate insights.",
+        "tips": parsed.get("tips") or [],
+        "alternatives": parsed.get("alternatives") or [],
+        "recommendations": parsed.get("recommendations") or [],
+    }
