@@ -13,12 +13,16 @@ _EXTRACTION_SYSTEM = (
 )
 
 _EXTRACTION_PROMPT = (
-    "Extract the following from this receipt and return as a JSON object with these exact keys:\n"
-    "- store_name (string): the shop/restaurant/merchant name\n"
+    "Look at this image and return a JSON object with these exact keys:\n"
+    "- is_receipt (boolean): true only if the image is clearly a purchase receipt or bill\n"
+    "- is_food_related (boolean): true only if it is a receipt for food or drink — "
+    "groceries, restaurants, cafes, bars, food delivery, etc. False for anything else "
+    "(clothing, electronics, fuel, utilities, non-receipt images, etc.)\n"
+    "- store_name (string): the shop/restaurant/merchant name, or null\n"
     "- date (string): transaction date in YYYY-MM-DD format, or null if not found\n"
     "- items (array of objects with 'name' string and 'price' number)\n"
     "- total_amount (number): the final total charged, or null if not found\n"
-    "- category (string): one of groceries, dining, transport, entertainment, health, shopping, utilities, other\n\n"
+    "- category (string): one of groceries, dining, other\n\n"
     "Return ONLY the JSON object, no other text."
 )
 

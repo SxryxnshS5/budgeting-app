@@ -4,13 +4,18 @@ import { uploadReceipt } from "../services/api";
 export default function UploadPage() {
   const [file, setFile] = useState(null);
   const [status, setStatus] = useState(null); // null | 'uploading' | 'success' | 'error'
+  const [errorMsg, setErrorMsg] = useState("");
   const [dragOver, setDragOver] = useState(false);
   const inputRef = useRef();
 
   const handleFile = (f) => {
-    if (f && (f.type.startsWith("image/") || f.type === "application/pdf")) {
+    if (f && f.type.startsWith("image/")) {
       setFile(f);
       setStatus(null);
+    } else if (f) {
+      setFile(null);
+      setStatus("error");
+      setErrorMsg("Only image files (JPG, PNG, WebP) are accepted.");
     }
   };
 
@@ -21,26 +26,29 @@ export default function UploadPage() {
       await uploadReceipt(file);
       setStatus("success");
       setFile(null);
-    } catch {
+    } catch (err) {
       setStatus("error");
+      setErrorMsg(
+        err?.response?.data?.detail || "Upload failed — is the backend running?"
+      );
     }
   };
 
   return (
-    <div className="max-w-lg mx-auto">
-      <h1 className="text-2xl font-bold text-gray-800 mb-2">
+    <div className="mx-auto max-w-lg animate-fade-up">
+      <h1 className="mb-2 text-3xl font-extrabold tracking-tight text-ink">
         Upload a Receipt
       </h1>
-      <p className="text-gray-500 mb-6">
-        Upload a receipt image or PDF to get started.
+      <p className="mb-7 text-slate">
+        Drop a receipt image to turn it into tracked spending.
       </p>
 
       {/* Drop zone */}
       <div
-        className={`border-2 border-dashed rounded-xl p-12 text-center cursor-pointer transition-colors ${
+        className={`cursor-pointer rounded-3xl border-2 border-dashed p-12 text-center transition-all duration-300 ${
           dragOver
-            ? "border-emerald-500 bg-emerald-50"
-            : "border-gray-300 hover:border-emerald-400 hover:bg-gray-50"
+            ? "scale-[1.02] border-ink bg-white/80 shadow-lift"
+            : "border-mauve/60 bg-white/50 hover:border-ink hover:bg-white/70 hover:shadow-soft"
         }`}
         onClick={() => inputRef.current.click()}
         onDragOver={(e) => {
@@ -54,21 +62,27 @@ export default function UploadPage() {
           handleFile(e.dataTransfer.files[0]);
         }}
       >
-        <div className="text-5xl mb-3">📄</div>
+        <div
+          className={`mb-3 text-5xl transition-transform duration-300 ${
+            dragOver ? "scale-110" : ""
+          }`}
+        >
+          📄
+        </div>
         {file ? (
-          <p className="text-gray-700 font-medium">{file.name}</p>
+          <p className="font-medium text-ink">{file.name}</p>
         ) : (
           <>
-            <p className="text-gray-600 font-medium">
-              Drag & drop or click to select
+            <p className="font-medium text-ink">Drag &amp; drop or click to select</p>
+            <p className="mt-1 text-sm text-mauve">
+              Food receipts only · JPG, PNG, WebP
             </p>
-            <p className="text-gray-400 text-sm mt-1">Supports JPG, PNG, PDF</p>
           </>
         )}
         <input
           ref={inputRef}
           type="file"
-          accept="image/*,application/pdf"
+          accept="image/*"
           className="hidden"
           onChange={(e) => handleFile(e.target.files[0])}
         />
@@ -77,19 +91,19 @@ export default function UploadPage() {
       <button
         onClick={handleUpload}
         disabled={!file || status === "uploading"}
-        className="mt-4 w-full bg-emerald-600 text-white py-2.5 rounded-lg font-medium hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+        className="mt-5 w-full rounded-2xl bg-ink py-3 font-semibold text-cream shadow-soft transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lift disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none"
       >
-        {status === "uploading" ? "Uploading..." : "Upload Receipt"}
+        {status === "uploading" ? "Uploading…" : "Upload Receipt"}
       </button>
 
       {status === "success" && (
-        <p className="mt-3 text-emerald-600 text-center font-medium">
+        <p className="mt-4 text-center font-medium text-slate animate-fade-up">
           ✅ Receipt uploaded successfully!
         </p>
       )}
       {status === "error" && (
-        <p className="mt-3 text-red-500 text-center font-medium">
-          ❌ Upload failed — is the backend running?
+        <p className="mt-4 text-center font-medium text-rose animate-fade-up">
+          ❌ {errorMsg}
         </p>
       )}
     </div>

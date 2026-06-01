@@ -20,11 +20,15 @@ _uploads.mkdir(exist_ok=True)
 
 @router.post("", status_code=201)
 async def upload_receipt(receipt: UploadFile = File(...)):
-    """Upload a receipt image or PDF, extract data with AI, and save to the DB."""
+    """Upload a food receipt image, extract data with AI, and save to the DB.
+
+    Only image files are accepted, and only food-related receipts are processed
+    and stored — anything else is rejected and the uploaded file is discarded.
+    """
     if receipt.content_type not in ALLOWED_MIME_TYPES:
         raise HTTPException(
             status_code=400,
-            detail="Invalid file type. Only JPG, PNG, WebP and PDF are accepted.",
+            detail="Invalid file type. Only JPG, PNG and WebP images are accepted.",
         )
 
     if not OPENAI_API_KEY:
@@ -41,6 +45,27 @@ async def upload_receipt(receipt: UploadFile = File(...)):
 
     # AI extraction
     receipt_data, raw_text = extract_receipt(image_base64, receipt.content_type)
+
+    # Reject anything that isn't a readable, food-related receipt. Discard the
+    # uploaded file so we don't keep images we never store in the database.
+    if not receipt_data:
+        dest.unlink(missing_ok=True)
+        raise HTTPException(
+            status_code=422,
+            detail="Couldn't read this image as a receipt. Please upload a clear photo of a food bill.",
+        )
+    if not receipt_data.get("is_receipt"):
+        dest.unlink(missing_ok=True)
+        raise HTTPException(
+            status_code=422,
+            detail="This doesn't look like a receipt. Please upload a photo of a food bill.",
+        )
+    if not receipt_data.get("is_food_related"):
+        dest.unlink(missing_ok=True)
+        raise HTTPException(
+            status_code=422,
+            detail="Only food-related bills are supported. This receipt doesn't look food-related, so it wasn't saved.",
+        )
 
     store_name = receipt_data.get("store_name")
     date = receipt_data.get("date")
