@@ -208,14 +208,19 @@ class TestExtractReceipt:
 # ---------------------------------------------------------------------------
 
 class TestGenerateInsights:
-    def test_returns_non_empty_string(self):
-        """generate_insights must return a non-empty string."""
+    def test_returns_structured_dict(self):
+        """generate_insights must return a dict with the expected keys."""
         result = generate_insights(SAMPLE_RECEIPTS)
-        assert isinstance(result, str) and len(result.strip()) > 0
+        assert isinstance(result, dict)
+        for key in ("narrative", "tips", "alternatives", "recommendations"):
+            assert key in result
+        assert isinstance(result["narrative"], str) and len(result["narrative"].strip()) > 0
+        for key in ("tips", "alternatives", "recommendations"):
+            assert isinstance(result[key], list)
 
-    def test_mentions_a_category_or_store(self):
-        """The insights should reference at least one category or store from the data."""
-        result = generate_insights(SAMPLE_RECEIPTS).lower()
+    def test_narrative_mentions_a_category_or_store(self):
+        """The narrative should reference at least one category or store from the data."""
+        result = generate_insights(SAMPLE_RECEIPTS)["narrative"].lower()
         keywords = {"groceries", "dining", "tesco", "pizza", "spending", "food"}
         assert any(kw in result for kw in keywords), (
             f"Insights don't seem to reference the receipt data: {result[:300]}"
@@ -224,9 +229,9 @@ class TestGenerateInsights:
     def test_single_receipt(self):
         """Should handle a list with just one receipt without error."""
         result = generate_insights([SAMPLE_RECEIPTS[0]])
-        assert isinstance(result, str) and len(result.strip()) > 0
+        assert isinstance(result, dict) and result["narrative"].strip()
 
     def test_empty_list_does_not_crash(self):
-        """Passing an empty list should return a string, not raise."""
+        """Passing an empty list should return a dict, not raise."""
         result = generate_insights([])
-        assert isinstance(result, str)
+        assert isinstance(result, dict)

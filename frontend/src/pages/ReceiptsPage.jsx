@@ -1,34 +1,32 @@
 import { useEffect, useState } from "react";
 import { getReceipts } from "../services/api";
 import { Link } from "react-router-dom";
+import HealthBadge, { HealthDisclaimer } from "../components/HealthBadge";
+import { hasHealthAlert } from "../lib/health";
 
 const fmtMoney = (n) => (typeof n === "number" ? `$${n.toFixed(2)}` : "—");
 const fmtDate  = (ts) => (ts ? new Date(ts * 1000).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "");
 
+const MEAL_ICON = { breakfast: "🌅", lunch: "🥪", dinner: "🍽️", midnight: "🌙" };
+
 const CATEGORY_COLORS = {
-  dining:      "bg-mauve/20 text-ink border-mauve/40",
-  grocery:     "bg-rose/30 text-ink border-rose/50",
-  groceries:   "bg-rose/30 text-ink border-rose/50",
-  cafe:        "bg-slate/10 text-ink border-slate/30",
-  takeaway:    "bg-ink/8 text-ink border-ink/20",
-  default:     "bg-cream text-slate border-mauve/20",
+  dining:    "bg-mauve/20 text-ink border-mauve/40",
+  grocery:   "bg-rose/30 text-ink border-rose/50",
+  groceries: "bg-rose/30 text-ink border-rose/50",
+  default:   "bg-cream text-slate border-mauve/20",
 };
 
 const CARD_ACCENT = {
   dining:    "from-mauve/60 to-mauve/20",
   grocery:   "from-rose/70 to-rose/20",
   groceries: "from-rose/70 to-rose/20",
-  cafe:      "from-slate/50 to-slate/10",
-  takeaway:  "from-ink/40 to-ink/10",
   default:   "from-mauve/30 to-transparent",
 };
 
-function categoryPill(cat) {
-  const key = cat?.toLowerCase() || "default";
-  const cls = CATEGORY_COLORS[key] || CATEGORY_COLORS.default;
+function Chip({ children, className = "" }) {
   return (
-    <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium capitalize ${cls}`}>
-      {cat}
+    <span className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-xs font-medium capitalize ${className}`}>
+      {children}
     </span>
   );
 }
@@ -81,9 +79,7 @@ export default function ReceiptsPage() {
   if (receipts.length === 0) {
     return (
       <div className="mx-auto max-w-sm py-20 text-center animate-fade-up">
-        <div className="glass mb-6 inline-flex h-20 w-20 items-center justify-center rounded-3xl text-4xl shadow-lift">
-          🗂️
-        </div>
+        <div className="glass mb-6 inline-flex h-20 w-20 items-center justify-center rounded-3xl text-4xl shadow-lift">🗂️</div>
         <h1 className="mb-2 text-2xl font-extrabold text-ink">No receipts yet</h1>
         <p className="mb-6 text-slate">Upload your first receipt to start tracking your food spending.</p>
         <Link
@@ -97,6 +93,7 @@ export default function ReceiptsPage() {
   }
 
   const total = receipts.reduce((s, r) => s + (r.total_amount || 0), 0);
+  const anyHealth = receipts.some(hasHealthAlert);
 
   return (
     <div className="animate-fade-up space-y-8">
@@ -105,9 +102,7 @@ export default function ReceiptsPage() {
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="text-3xl font-extrabold tracking-tight text-ink">Your Receipts</h1>
-          <p className="mt-1 text-sm text-mauve">
-            {receipts.length} receipt{receipts.length !== 1 ? "s" : ""} scanned
-          </p>
+          <p className="mt-1 text-sm text-mauve">{receipts.length} receipt{receipts.length !== 1 ? "s" : ""} scanned</p>
         </div>
         <div className="glass flex items-center gap-4 px-5 py-3">
           <div className="text-right">
@@ -117,9 +112,7 @@ export default function ReceiptsPage() {
           <div className="h-8 w-px bg-rose/40" />
           <div className="text-right">
             <p className="text-xs font-medium text-mauve">Avg / receipt</p>
-            <p className="text-xl font-extrabold tracking-tight text-ink">
-              {fmtMoney(total / receipts.length)}
-            </p>
+            <p className="text-xl font-extrabold tracking-tight text-ink">{fmtMoney(total / receipts.length)}</p>
           </div>
         </div>
       </div>
@@ -127,58 +120,70 @@ export default function ReceiptsPage() {
       {/* ── Grid ─────────────────────────────────────────────────── */}
       <div className="grid gap-4 stagger sm:grid-cols-2">
         {receipts.map((r) => {
-          const accentKey = r.category?.toLowerCase() || "default";
-          const accent = CARD_ACCENT[accentKey] || CARD_ACCENT.default;
+          const catKey = r.category?.toLowerCase() || "default";
+          const accent = CARD_ACCENT[catKey] || CARD_ACCENT.default;
+          const catCls = CATEGORY_COLORS[catKey] || CATEGORY_COLORS.default;
+          const alerted = hasHealthAlert(r);
           return (
-            <div
-              key={r.id}
-              className="glass group flex flex-col overflow-hidden transition-all duration-300 hover:-translate-y-1 hover:shadow-lift"
-            >
-              {/* Coloured top accent bar */}
+            <div key={r.id} className="glass group flex flex-col overflow-hidden transition-all duration-300 hover:-translate-y-1 hover:shadow-lift">
               <div className={`h-1 w-full bg-gradient-to-r ${accent}`} />
 
               <div className="flex flex-1 flex-col p-5">
                 {/* Store + amount */}
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <p className="truncate font-bold text-ink">
-                      {r.store_name || "Unknown store"}
-                    </p>
+                    <p className="truncate font-bold text-ink">{r.store_name || "Unknown store"}</p>
                     <p className="mt-0.5 text-xs text-mauve">
-                      {r.date || fmtDate(r.uploaded_at)}
+                      {r.date || fmtDate(r.uploaded_at)}{r.time ? ` · ${r.time}` : ""}
                     </p>
                   </div>
-                  <div className="shrink-0 text-right">
-                    <p className="text-lg font-extrabold text-slate">{fmtMoney(r.total_amount)}</p>
-                  </div>
+                  <p className="shrink-0 text-lg font-extrabold text-slate">{fmtMoney(r.total_amount)}</p>
                 </div>
 
-                {/* Category pill */}
-                {r.category && (
-                  <div className="mt-3">{categoryPill(r.category)}</div>
-                )}
+                {/* Chips: category / cuisine / meal / health alert */}
+                <div className="mt-3 flex flex-wrap gap-1.5">
+                  {r.category && <Chip className={catCls}>{r.category}</Chip>}
+                  {r.cuisine && r.cuisine !== r.category && (
+                    <Chip className="bg-slate/10 text-ink border-slate/30">🍽️ {r.cuisine}</Chip>
+                  )}
+                  {r.meal_type && (
+                    <Chip className="bg-ink/8 text-ink border-ink/20">
+                      {MEAL_ICON[r.meal_type] || "🍴"} {r.meal_type}
+                    </Chip>
+                  )}
+                  {alerted && (
+                    <Chip className="bg-rose/30 text-ink border-rose/50">⚠️ Health alert</Chip>
+                  )}
+                </div>
 
                 {/* Items */}
                 {r.items && r.items.length > 0 && (
                   <>
                     <div className="my-3 border-t border-cream" />
-                    <ul className="space-y-1.5 text-sm">
-                      {r.items.slice(0, 5).map((item, i) => (
-                        <li key={i} className="flex items-baseline justify-between gap-2">
-                          <span className="truncate text-slate">
-                            {typeof item === "string" ? item : item.name}
-                          </span>
-                          {item && typeof item === "object" && item.price != null && (
-                            <span className="shrink-0 text-xs font-medium text-mauve">
-                              {fmtMoney(item.price)}
-                            </span>
-                          )}
-                        </li>
-                      ))}
+                    <ul className="space-y-2 text-sm">
+                      {r.items.slice(0, 5).map((item, i) => {
+                        const obj = typeof item === "object" && item ? item : null;
+                        const name = obj ? obj.name : item;
+                        return (
+                          <li key={i}>
+                            <div className="flex items-baseline justify-between gap-2">
+                              <span className="truncate text-slate">
+                                {obj?.alcoholic && "🍷 "}{name}
+                              </span>
+                              {obj && obj.price != null && (
+                                <span className="shrink-0 text-xs font-medium text-mauve">{fmtMoney(obj.price)}</span>
+                              )}
+                            </div>
+                            {obj?.health_labels?.length > 0 && (
+                              <div className="mt-1 flex flex-wrap gap-1">
+                                {obj.health_labels.map((l) => <HealthBadge key={l} label={l} />)}
+                              </div>
+                            )}
+                          </li>
+                        );
+                      })}
                       {r.items.length > 5 && (
-                        <li className="text-xs text-mauve italic">
-                          +{r.items.length - 5} more items
-                        </li>
+                        <li className="text-xs italic text-mauve">+{r.items.length - 5} more items</li>
                       )}
                     </ul>
                   </>
@@ -188,6 +193,8 @@ export default function ReceiptsPage() {
           );
         })}
       </div>
+
+      {anyHealth && <HealthDisclaimer />}
     </div>
   );
 }
